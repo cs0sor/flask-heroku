@@ -121,7 +121,7 @@ class Heroku(object):
         # Mongolab
         mongolab_uri = environ.get('MONGOLAB_URI')
         if mongolab_uri:
-            mongo_url = urlparse_mongo(mongolab_uri)
+            url = urlparse_mongo(mongolab_uri)
             app.config.setdefault('MONGO_URI', mongolab_uri)
             app.config.setdefault('MONGODB_USER', url.username)
             app.config.setdefault('MONGODB_USERNAME', url.username)
