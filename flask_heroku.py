@@ -1,10 +1,45 @@
 #!/usr/bin/env python
 
 from os import environ
+from collections import namedtuple
 try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
+try:
+    from pymongo.uri_parser import parse_uri
+except ImportError:
+    parse_uri = None
+
+
+def urlparse_mongo(urlstring):
+    """Parse a MongoDB URI"""
+    
+    result_keys = ['username','password','hostname','port','database']
+    result_kwargs = dict.fromkeys(result_keys, None)
+    MongoParseResult = namedtuple('MongoParseResult', result_keys)
+
+    if parse_uri:
+        url = parse_uri(urlstring)
+        hostname, port = url['nodelist'][0]
+        result_kwargs.update({
+            'hostname': hostname, 
+            'port': port, 
+            'username': url['username'],
+            'password': url['password'],
+            'database': url['database']
+        })
+    else:
+        url = urlparse(urlstring)
+        result_kwargs.update({
+            'hostname': url.hostname, 
+            'port': url.port, 
+            'username': url.username,
+            'password': url.password,
+            'database': url.path[1:]
+        })
+
+    return MongoParseResult(**result_kwargs)
 
 
 class Heroku(object):
@@ -86,25 +121,25 @@ class Heroku(object):
         # Mongolab
         mongolab_uri = environ.get('MONGOLAB_URI')
         if mongolab_uri:
-            url = urlparse(mongolab_uri)
+            mongo_url = urlparse_mongo(mongolab_uri)
             app.config.setdefault('MONGO_URI', mongolab_uri)
             app.config.setdefault('MONGODB_USER', url.username)
             app.config.setdefault('MONGODB_USERNAME', url.username)
             app.config.setdefault('MONGODB_PASSWORD', url.password)
             app.config.setdefault('MONGODB_HOST', url.hostname)
             app.config.setdefault('MONGODB_PORT', url.port)
-            app.config.setdefault('MONGODB_DB', url.path[1:])
+            app.config.setdefault('MONGODB_DB', url.database)
 
         # MongoHQ
         mongohq_uri = environ.get('MONGOHQ_URL')
         if mongohq_uri:
-            url = urlparse(mongohq_uri)
+            url = urlparse_mongo(mongohq_uri)
             app.config.setdefault('MONGO_URI', mongohq_uri)
             app.config.setdefault('MONGODB_USER', url.username)
             app.config.setdefault('MONGODB_PASSWORD', url.password)
             app.config.setdefault('MONGODB_HOST', url.hostname)
             app.config.setdefault('MONGODB_PORT', url.port)
-            app.config.setdefault('MONGODB_DB', url.path[1:])
+            app.config.setdefault('MONGODB_DB', url.database)
 
         # Cloudant
         cloudant_uri = environ.get('CLOUDANT_URL')
